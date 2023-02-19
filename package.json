@@ -4,7 +4,10 @@
     "esbuild": "0.17.3"
   },
   "scripts": {
-    "build": "esbuild index.ts --bundle --outfile=dist/index.js --format=esm --sourcemap && cp ../tangle/tangle_ts/dist/rust_utilities.wasm dist/rust_utilities.wasm ",
+    "dev": "npm run watch-wasm & npm run build & npm run dev-server",
+    "watch-wasm": "cd rust_project && cargo watch -x \"build --release\" -s \"cp target/wasm32-unknown-unknown/release/rust_project.wasm ../dist/rust_project.wasm\"",
+    "build": "esbuild index.ts --bundle --outfile=dist/index.js --format=esm --sourcemap && cp ../tangle/tangle_ts/dist/rust_utilities.wasm dist/rust_utilities.wasm",
+    "dev-server": "devserver --path dist --address 0.0.0.0:8080",
     "build_release": "esbuild index.ts --bundle --outfile=dist/index.js --format=esm && cp ../tangle/tangle_ts/dist/rust_utilities.wasm dist/rust_utilities.wasm"
   }
 }

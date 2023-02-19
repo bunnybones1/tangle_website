@@ -19,6 +19,10 @@ This code is messy but I'm making it available for those who want to learn from 
 
 The build expects the [`tangle`](https://github.com/kettle11/tangle) repository to be adjacent to the `tangle_website` repository.
 
-You also need `npm` and Rust installed.  `devserver` is used as the test server which can be installed with `cargo install devserver`.
+You also need `npm` and Rust installed.
 
-Once you have those things setup run the command `./run.sh` and visit `localhost:8080`.
+`devserver` is used as the test server which can be installed with `cargo install devserver`.
+
+`cargo-watch` is used to watch and rebuilt the rust project, and can be installed with `cargo install cargo-watch`.
+
+Once you have those things setup run the command `npm run dev` and visit `localhost:8080`.
