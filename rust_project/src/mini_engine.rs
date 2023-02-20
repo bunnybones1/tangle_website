@@ -100,37 +100,50 @@ mod unsafe_external {
     extern "C" {
         pub(crate) fn set_color(r: u8, g: u8, b: u8, a: f32);
         pub(crate) fn draw_circle(x: f32, y: f32, r: f32);
-        pub(crate) fn draw_rect(x: f32, y: f32, w: f32, h: f32);
+        pub(crate) fn draw_fast_ball(
+            r: f32,
+            ma: f32,
+            mb: f32,
+            mc: f32,
+            md: f32,
+            me: f32,
+            mf: f32,
+            cr: u8,
+            cg: u8,
+            cb: u8,
+        );
+        pub(crate) fn draw_fast_rect(
+            x: f32,
+            y: f32,
+            w: f32,
+            h: f32,
+            ma: f32,
+            mb: f32,
+            mc: f32,
+            md: f32,
+            me: f32,
+            mf: f32,
+            cr: u8,
+            cg: u8,
+            cb: u8,
+        );
+        pub(crate) fn begin_draw_fast_poly(
+            x: f32,
+            y: f32,
+            ma: f32,
+            mb: f32,
+            mc: f32,
+            md: f32,
+            me: f32,
+            mf: f32,
+            cr: u8,
+            cg: u8,
+            cb: u8,
+        );
+        pub(crate) fn draw_next_poly_vert(x: f32, y: f32);
+        pub(crate) fn end_draw_fast_poly();
         pub(crate) fn set_transform(a: f32, b: f32, c: f32, d: f32, e: f32, f: f32);
-        pub(crate) fn begin_path();
-        pub(crate) fn move_to(x: f32, y: f32);
-        pub(crate) fn line_to(x: f32, y: f32);
-        pub(crate) fn fill();
 
-    }
-}
-
-pub fn begin_path() {
-    unsafe {
-        unsafe_external::begin_path();
-    }
-}
-
-pub fn fill() {
-    unsafe {
-        unsafe_external::fill();
-    }
-}
-
-pub fn move_to(x: f32, y: f32) {
-    unsafe {
-        unsafe_external::move_to(x, y);
-    }
-}
-
-pub fn line_to(x: f32, y: f32) {
-    unsafe {
-        unsafe_external::line_to(x, y);
     }
 }
 
@@ -153,9 +166,70 @@ pub fn draw_circle(x: f32, y: f32, radius: f32) {
     }
 }
 
-pub fn draw_rect(x: f32, y: f32, width: f32, height: f32) {
+pub fn draw_fast_ball(
+    radius: f32,
+    ma: f32,
+    mb: f32,
+    mc: f32,
+    md: f32,
+    me: f32,
+    mf: f32,
+    cr: u8,
+    cg: u8,
+    cb: u8,
+) {
     unsafe {
-        unsafe_external::draw_rect(x, y, width, height);
+        unsafe_external::draw_fast_ball(radius, ma, mb, mc, md, me, mf, cr, cg, cb);
+    }
+}
+
+pub fn draw_fast_rect(
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    ma: f32,
+    mb: f32,
+    mc: f32,
+    md: f32,
+    me: f32,
+    mf: f32,
+    cr: u8,
+    cg: u8,
+    cb: u8,
+) {
+    unsafe {
+        unsafe_external::draw_fast_rect(x, y, width, height, ma, mb, mc, md, me, mf, cr, cg, cb);
+    }
+}
+
+pub fn begin_draw_fast_poly(
+    x: f32,
+    y: f32,
+    ma: f32,
+    mb: f32,
+    mc: f32,
+    md: f32,
+    me: f32,
+    mf: f32,
+    cr: u8,
+    cg: u8,
+    cb: u8,
+) {
+    unsafe {
+        unsafe_external::begin_draw_fast_poly(x, y, ma, mb, mc, md, me, mf, cr, cg, cb);
+    }
+}
+
+pub fn draw_next_poly_vert(x: f32, y: f32) {
+    unsafe {
+        unsafe_external::draw_next_poly_vert(x, y);
+    }
+}
+
+pub fn end_draw_fast_poly() {
+    unsafe {
+        unsafe_external::end_draw_fast_poly();
     }
 }
 

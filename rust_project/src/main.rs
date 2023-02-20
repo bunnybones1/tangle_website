@@ -121,7 +121,7 @@ fn main() {
     }
 
     for _ in 0..5 {
-        physics_objects.push(add_shape(&mut rapier, &mut random, 2.0, 0.5, 3, 0.12));
+        physics_objects.push(add_shape(&mut rapier, &mut random, 2.0, 0.5, 6, 0.12));
     }
 
     for _ in 0..3 {
@@ -164,34 +164,67 @@ fn main() {
                     match shape.shape_type() {
                         ShapeType::Ball => {
                             let ball = shape.as_ball().unwrap();
-
-                            draw_circle(0.0, 0.0, ball.radius);
+                            draw_fast_ball(
+                                ball.radius,
+                                matrix[0],
+                                matrix[1],
+                                matrix[3],
+                                matrix[4],
+                                matrix[6],
+                                matrix[7],
+                                color.0,
+                                color.1,
+                                color.2,
+                            );
                         }
                         ShapeType::Cuboid => {
                             let rect = shape.as_cuboid().unwrap();
                             let extents = rect.half_extents;
-
-                            draw_rect(-extents.x, -extents.y, extents.x * 2.0, extents.y * 2.0);
+                            draw_fast_rect(
+                                -extents.x,
+                                -extents.y,
+                                extents.x * 2.0,
+                                extents.y * 2.0,
+                                matrix[0],
+                                matrix[1],
+                                matrix[3],
+                                matrix[4],
+                                matrix[6],
+                                matrix[7],
+                                color.0,
+                                color.1,
+                                color.2,
+                            );
                         }
                         ShapeType::ConvexPolygon => {
                             let convex_polygon = shape.as_convex_polygon().unwrap();
-                            convex_polygon.points();
-                            begin_path();
                             let points = convex_polygon.points();
-                            move_to(points[0].x, points[0].y);
-                            for p in &convex_polygon.points()[1..] {
-                                line_to(p.x, p.y);
+                            let first_point = points[0];
+                            begin_draw_fast_poly(
+                                first_point.x,
+                                first_point.y,
+                                matrix[0],
+                                matrix[1],
+                                matrix[3],
+                                matrix[4],
+                                matrix[6],
+                                matrix[7],
+                                color.0,
+                                color.1,
+                                color.2,
+                            );
+                            for p in &points[1..] {
+                                draw_next_poly_vert(p.x, p.y);
                             }
-                            line_to(points[0].x, points[0].y);
-
-                            fill();
+                            draw_next_poly_vert(first_point.x, first_point.y);
+                            end_draw_fast_poly()
                         }
                         _ => {
                             log(&format!("Unexpected shape type: {:?}", shape.shape_type()));
                         }
                     }
-                    reset_transform();
                 }
+                reset_transform();
             }
 
             for pointer in player_pointers.values() {

@@ -965,7 +965,7 @@ var Tangle = class {
     this._rust_utilities = time_machine.rust_utilities;
   }
   // private _debug_enabled = true;
-  static async instanstiate(source, importObject, tangle_configuration) {
+  static async instantiate(source, importObject, tangle_configuration) {
     tangle_configuration ?? (tangle_configuration = {});
     tangle_configuration.accept_new_programs ?? (tangle_configuration.accept_new_programs = false);
     const wasm_binary = new Uint8Array(source);
@@ -998,7 +998,7 @@ var Tangle = class {
   static async instantiateStreaming(source, importObject, tangle_configuration) {
     source = await source;
     const binary = await source.arrayBuffer();
-    return Tangle.instanstiate(new Uint8Array(binary), importObject, tangle_configuration);
+    return Tangle.instantiate(new Uint8Array(binary), importObject, tangle_configuration);
   }
   _change_state(state) {
     if (this._tangle_state != state) {
@@ -1392,57 +1392,116 @@ var Tangle = class {
 // index.ts
 async function setup_demo1() {
   set_random_name();
-  let canvas = document.getElementById("demo1");
+  let canvas = document.getElementById("demo2d");
   canvas.style.opacity = "0.0";
-  var context = canvas.getContext("2d");
+  var context2d = canvas.getContext("2d");
+  let canvas2 = document.getElementById("demoWebGl");
+  canvas2.style.opacity = "0.0";
+  var contextWebGl = canvas2.getContext("webgl", {
+    alpha: true
+  });
   let fixed_update_interval = 1e3 / 60;
+  const cachedShapes = /* @__PURE__ */ new Map();
+  let currentShape;
+  function startCurrentShape(x, y) {
+    currentShape = [x, y];
+  }
+  function describeCurrentShape(x, y) {
+    currentShape.push(x, y);
+  }
+  function endCurrentShape() {
+    let hash = currentShape.reduce((p, c) => (p * 13589827123e-3 + c * 14345235231e-3) % 1, 0).toString();
+    if (!cachedShapes.has(hash)) {
+      cachedShapes.set(hash, currentShape);
+    }
+    if (currentShape.length > 2) {
+      context2d.moveTo(currentShape[0], currentShape[1]);
+      for (let i = 2; i < currentShape.length; i += 2) {
+        context2d.lineTo(currentShape[i], currentShape[i + 1]);
+      }
+      context2d.fill();
+    }
+  }
   let imports = {
     env: {
       set_color: function(r, g, b, a) {
-        context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+        context2d.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
       },
       draw_circle: function(x, y, radius) {
-        context.beginPath();
-        context.arc(x, y, radius, 0, 2 * Math.PI);
-        context.fill();
+        context2d.beginPath();
+        context2d.arc(x, y, radius, 0, 2 * Math.PI);
+        context2d.fill();
+      },
+      draw_ball: function(radius) {
+        context2d.beginPath();
+        context2d.arc(0, 0, radius, 0, 2 * Math.PI);
+        context2d.fill();
+      },
+      draw_fast_ball: function(radius, ma, mb, mc, md, me, mf, cr, cg, cb) {
+        context2d.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 255)`;
+        context2d.setTransform(ma, mb, mc, md, me, mf);
+        context2d.beginPath();
+        context2d.arc(0, 0, radius, 0, 2 * Math.PI);
+        context2d.fill();
+      },
+      begin_draw_fast_poly: function(x, y, ma, mb, mc, md, me, mf, cr, cg, cb) {
+        context2d.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 255)`;
+        context2d.setTransform(ma, mb, mc, md, me, mf);
+        startCurrentShape(x, y);
+      },
+      draw_next_poly_vert: function(x, y) {
+        describeCurrentShape(x, y);
+      },
+      end_draw_fast_poly: function() {
+        endCurrentShape();
       },
       begin_path: function() {
-        context.beginPath();
+        context2d.beginPath();
       },
       move_to: function(x, y) {
-        context.moveTo(x, y);
+        startCurrentShape(x, y);
       },
       line_to: function(x, y) {
-        context.lineTo(x, y);
+        describeCurrentShape(x, y);
       },
       stroke: function() {
-        context.stroke();
+        context2d.stroke();
       },
       fill: function() {
-        context.fill();
+        endCurrentShape();
       },
       translate: function(x, y) {
-        context.translate(x, y);
+        context2d.translate(x, y);
       },
       rotate: function(radians) {
-        context.rotate(radians);
+        context2d.rotate(radians);
       },
       draw_rect: function(x, y, width, height) {
-        context.beginPath();
-        context.rect(x, y, width, height);
-        context.fill();
+        context2d.beginPath();
+        context2d.rect(x, y, width, height);
+        context2d.fill();
+      },
+      draw_fast_rect: function(x, y, width, height, ma, mb, mc, md, me, mf, cr, cg, cb) {
+        context2d.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 255)`;
+        context2d.setTransform(ma, mb, mc, md, me, mf);
+        context2d.beginPath();
+        context2d.rect(x, y, width, height);
+        context2d.fill();
       },
       set_transform: function(a, b, c, d, e, f) {
-        context.setTransform(a, b, c, d, e, f);
+        context2d.setTransform(a, b, c, d, e, f);
       }
     }
   };
-  let wasm_binary = await fetch("rust_project.wasm").then((response) => response.arrayBuffer());
+  let wasm_binary = await fetch("rust_project.wasm").then(
+    (response) => response.arrayBuffer()
+  );
   let result = await Tangle.instantiate(new Uint8Array(wasm_binary), imports, {
     fixed_update_interval,
     on_state_change_callback: (state) => {
       if (state == 1 /* Connected */) {
         canvas.style.opacity = "1.0";
+        canvas2.style.opacity = "1.0";
         if (exports.player_joined) {
           exports.player_joined(UserId);
         }
@@ -1454,19 +1513,35 @@ async function setup_demo1() {
   document.onpointerdown = async (event) => {
     let rect = canvas.getBoundingClientRect();
     if (exports.pointer_down) {
-      exports.pointer_down(UserId, event.pointerId, event.clientX - rect.left, event.clientY - rect.top);
+      exports.pointer_down(
+        UserId,
+        event.pointerId,
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
     }
   };
   document.onpointermove = async (event) => {
     let rect = canvas.getBoundingClientRect();
     if (exports.pointer_move) {
-      exports.pointer_move(UserId, event.pointerId, event.clientX - rect.left, event.clientY - rect.top);
+      exports.pointer_move(
+        UserId,
+        event.pointerId,
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
     }
   };
   document.onpointerup = async (event) => {
     let rect = canvas.getBoundingClientRect();
     if (exports.pointer_up) {
-      exports.pointer_up(UserId, event.pointerId, event.pointerType === "mouse", event.clientX - rect.left, event.clientY - rect.top);
+      exports.pointer_up(
+        UserId,
+        event.pointerId,
+        event.pointerType === "mouse",
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
     }
   };
   document.onkeydown = async (event) => {
@@ -1484,7 +1559,14 @@ async function setup_demo1() {
       canvas.width = canvas.clientWidth;
       canvas.height = canvas.clientHeight;
     }
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context2d.clearRect(0, 0, context2d.canvas.width, context2d.canvas.height);
+    contextWebGl.clearColor(
+      Math.random() * 0.1,
+      Math.random() * 0.1,
+      Math.random() * 0.1,
+      0.01
+    );
+    contextWebGl.clear(contextWebGl.COLOR_BUFFER_BIT);
     exports.draw.callAndRevert();
     window.requestAnimationFrame(animation);
   }

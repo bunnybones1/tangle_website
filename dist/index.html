@@ -1,135 +1,153 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-    <title> Tangle </title>
-    <meta name="description" content="Tangle is an open-source JavaScript library that radically simplifies building multiplayer and networked programs.
-    Tangle works by wrapping a regular WebAssembly program to automatically network it.">
+  <head>
+    <title>Tangle</title>
+    <meta
+      name="description"
+      content="Tangle is an open-source JavaScript library that radically simplifies building multiplayer and networked programs.
+    Tangle works by wrapping a regular WebAssembly program to automatically network it."
+    />
     <meta charset="utf-8" />
     <style>
-        @font-face {
-            font-family: Inter;
-            src: url(fonts/Inter-Regular.woff2);
-        }
+      @font-face {
+        font-family: Inter;
+        src: url(fonts/Inter-Regular.woff2);
+      }
 
-        @font-face {
-            font-family: InterDisplay;
-            src: url(fonts/Inter-DisplayMedium.woff2);
-        }
+      @font-face {
+        font-family: InterDisplay;
+        src: url(fonts/Inter-DisplayMedium.woff2);
+      }
 
-        @font-face {
-            font-family: PermanentMarker;
-            src: url(fonts/PermanentMarker-Regular.ttf);
-        }
+      @font-face {
+        font-family: PermanentMarker;
+        src: url(fonts/PermanentMarker-Regular.ttf);
+      }
 
+      html {
+        background-color: #e5d1c6;
+        color: #635959;
+        font-family: Inter;
+        font-size: 18px;
+      }
+
+      body {
+        text-align: left;
+        align-items: left;
+        margin: 0;
+      }
+
+      h1 {
+        font-family: InterDisplay;
+        font-size: 1.5rem;
+        line-height: 3rem;
+      }
+
+      h2 {
+        font-family: InterDisplay;
+        font-size: 1.25rem;
+        line-height: 3rem;
+      }
+
+      h3 {
+        line-height: 2.8rem;
+        vertical-align: middle;
+        display: inline-block;
+      }
+
+      #alpha_text {
+        margin-left: 0.5rem;
+        font-family: PermanentMarker;
+        color: #b17696;
+      }
+
+      canvas {
+        transition: opacity 0.2s;
+        opacity: 0;
+        margin-left: 0;
+      }
+
+      #demo2d {
+        width: 100%;
+        height: 600px;
+        position: absolute;
+        touch-action: none;
+      }
+
+      #demoWebGl {
+        width: 100%;
+        height: 600px;
+        position: absolute;
+        touch-action: none;
+      }
+
+      #title {
+        margin-left: 4rem;
+        margin-right: 4rem;
+      }
+
+      #body_text {
+        margin-left: 4rem;
+        margin-right: 4rem;
+        max-width: 42rem;
+        margin-top: 4rem;
+        margin-bottom: 4rem;
+        line-height: 1.5rem;
+      }
+
+      p {
+        margin-bottom: 2rem;
+      }
+
+      @media only screen and (max-width: 1000px) {
         html {
-            background-color: #E5D1C6;
-            color: #635959;
-            font-family: Inter;
-            font-size: 18px;
+          font-size: 30px;
         }
-
-        body {
-            text-align: left;
-            align-items: left;
-            margin: 0;
-        }
-
-        h1 {
-            font-family: InterDisplay;
-            font-size: 1.5rem;
-            line-height: 3rem;
-        }
-
-        h2 {
-            font-family: InterDisplay;
-            font-size: 1.25rem;
-            line-height: 3rem;
-        }
-
-        h3 {
-            line-height: 2.8rem;
-            vertical-align: middle;
-            display: inline-block;
-        }
-
-        #alpha_text {
-            margin-left: 0.5rem;
-            font-family: PermanentMarker;
-            color: #B17696;
-        }
-
-        canvas {
-            transition: opacity 0.2s;
-            opacity: 0;
-            margin-left: 0;
-        }
-
-        #demo1 {
-            width: 100%;
-            height: 600px;
-            position: absolute;
-            touch-action: none;
-        }
-
-        #title {
-            margin-left: 4rem;
-            margin-right: 4rem;
-        }
-
-        #body_text {
-            margin-left: 4rem;
-            margin-right: 4rem;
-            max-width: 42rem;
-            margin-top: 4rem;
-            margin-bottom: 4rem;
-            line-height: 1.5rem;
-        }
-
-        p {
-            margin-bottom: 2rem;
-        }
-
-        @media only screen and (max-width: 1000px) {
-            html {
-                font-size: 30px;
-            }
-        }
+      }
     </style>
-</head>
-
-<body>
-    <canvas id="demo1"></canvas>
-    <div style="height: 4rem;"></div>
+  </head>
+  <body>
+    <canvas id="demo2d"></canvas>
+    <canvas id="demoWebGl"></canvas>
+    <div style="height: 4rem"></div>
     <div id="title">
-        <div style="display: flex; align-items: center;">
-            <h1>Tangle</h1>
-            <h3 id="alpha_text">Alpha</h3>
-            <a href="https://github.com/kettle11/tangle"
-                style="margin-left: auto;  vertical-align:middle; margin-top: -0.4rem; margin-right: 1.0rem; z-index: 2;">
-                <img src=" mark-github-24.svg" />
-            </a>
-        </div>
+      <div style="display: flex; align-items: center">
+        <h1>Tangle</h1>
+        <h3 id="alpha_text">Alpha</h3>
+        <a
+          href="https://github.com/kettle11/tangle"
+          style="
+            margin-left: auto;
+            vertical-align: middle;
+            margin-top: -0.4rem;
+            margin-right: 1rem;
+            z-index: 2;
+          "
+        >
+          <img src=" mark-github-24.svg" />
+        </a>
+      </div>
     </div>
     <div id="body_text">
-        <div style="height: 400px;"></div>
-        <p>
-            Drag blocks around. Open this page in a new tab or share the URL to try multiplayer!
-        </p>
-        <h2>What is Tangle?</h2>
-        <p>
-            Tangle is an <a href="https://github.com/kettle11/tangle">open-source</a> JavaScript library that radically
-            simplifies building multiplayer and networked programs. Tangle works by wrapping a regular WebAssembly
-            program to automatically network it.
-        </p>
-        <p>
-            Note: Tangle is <i>incredibly</i> new and has many bugs and missing features. <br>
-            Check out the project on GitHub
-            if
-            you'd like to help!
-        </p>
+      <div style="height: 400px"></div>
+      <p>
+        Open this page in a new tab or share the URL to try
+        multiplayer!
+      </p>
+      <h2>What is Tangle?</h2>
+      <p>
+        Tangle is an
+        <a href="https://github.com/kettle11/tangle">open-source</a> JavaScript
+        library that radically simplifies building multiplayer and networked
+        programs. Tangle works by wrapping a regular WebAssembly program to
+        automatically network it.
+      </p>
+      <p>
+        Note: Tangle is <i>incredibly</i> new and has many bugs and missing
+        features. <br />
+        Check out the project on GitHub if you'd like to help!
+      </p>
     </div>
     <script src="index.js" type="module"></script>
-</body>
-
+  </body>
 </html>
