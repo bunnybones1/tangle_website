@@ -157,21 +157,17 @@ fn main() {
 
                     let matrix = collider.position().to_matrix();
                     let matrix = matrix.scale(1.0 / WORLD_SCALE_FACTOR);
-                    set_transform(
-                        matrix[0], matrix[1], matrix[3], matrix[4], matrix[6], matrix[7],
-                    );
-                    set_color(color.0, color.1, color.2, 255);
+                    let location = collider.position();
+                    let loc_translation = location.translation;
+                    let loc_angle = location.rotation.angle();
                     match shape.shape_type() {
                         ShapeType::Ball => {
                             let ball = shape.as_ball().unwrap();
                             draw_fast_ball(
+                                loc_translation.x / WORLD_SCALE_FACTOR,
+                                loc_translation.y / WORLD_SCALE_FACTOR,
+                                loc_angle,
                                 ball.radius,
-                                matrix[0],
-                                matrix[1],
-                                matrix[3],
-                                matrix[4],
-                                matrix[6],
-                                matrix[7],
                                 color.0,
                                 color.1,
                                 color.2,

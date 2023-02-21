@@ -18,16 +18,18 @@ function compute_id_from_ip(ipAddress) {
   return uniqueNumber;
 }
 var Room = class {
+  _peers_to_join = /* @__PURE__ */ new Set();
+  _current_state = 2 /* Disconnected */;
+  _peers = /* @__PURE__ */ new Map();
+  _configuration = {};
+  _outgoing_data_chunk = new Uint8Array(MAX_MESSAGE_SIZE + 5);
+  _rust_utilities;
+  _server_socket;
+  // Default to 1 because 0 conflicts with the 'system' ID.
+  my_id = 1;
+  // Used for testing
+  _artificial_delay = 0;
   constructor(rust_utilities) {
-    this._peers_to_join = /* @__PURE__ */ new Set();
-    this._current_state = 2 /* Disconnected */;
-    this._peers = /* @__PURE__ */ new Map();
-    this._configuration = {};
-    this._outgoing_data_chunk = new Uint8Array(MAX_MESSAGE_SIZE + 5);
-    // Default to 1 because 0 conflicts with the 'system' ID.
-    this.my_id = 1;
-    // Used for testing
-    this._artificial_delay = 0;
     this._rust_utilities = rust_utilities;
   }
   static async setup(_configuration, rust_utilities) {
@@ -80,11 +82,10 @@ var Room = class {
     return this._peers.entries().next().value?.[0];
   }
   async _setup_inner(room_configuration) {
-    var _a, _b, _c;
     this._configuration = room_configuration;
-    (_a = this._configuration).server_url ?? (_a.server_url = "tangle-server.fly.dev");
-    (_b = this._configuration).room_name ?? (_b.room_name = "");
-    (_c = this._configuration).ice_servers ?? (_c.ice_servers = [
+    this._configuration.server_url ??= "tangle-server.fly.dev";
+    this._configuration.room_name ??= "";
+    this._configuration.ice_servers ??= [
       {
         urls: "stun:relay.metered.ca:80"
       },
@@ -106,7 +107,7 @@ var Room = class {
         username: "acb3fd59dc274dbfd4e9ef21",
         credential: "1zeDaNt7C85INfxl"
       }
-    ]);
+    ];
     const connect_to_server = () => {
       const server_socket = new WebSocket("wss://" + this._configuration.server_url);
       let keep_alive_interval;
@@ -302,8 +303,10 @@ var Room = class {
 var text_encoder = new TextEncoder();
 var text_decoder = new TextDecoder();
 var MessageWriterReader = class {
+  output;
+  data_view;
+  offset = 0;
   constructor(output) {
-    this.offset = 0;
     this.output = output;
     this.data_view = new DataView(output.buffer, output.byteOffset);
   }
@@ -447,6 +450,7 @@ var MessageWriterReader = class {
 // ../tangle/tangle_ts/src/rust_utilities.ts
 var decoder = new TextDecoder();
 var RustUtilities = class {
+  _rust_utilities;
   constructor(rust_utilities) {
     this._rust_utilities = rust_utilities;
   }
@@ -562,40 +566,44 @@ var decoder2 = new TextDecoder();
 var action_log = "";
 var debug_mode = false;
 var TimeMachine = class {
+  _fixed_update_interval;
+  _current_simulation_time = { time: 0, player_id: 0 };
+  _fixed_update_time = 0;
+  _target_time = 0;
+  _need_to_rollback_to_time;
+  _events = [];
+  _snapshots = [];
+  _wasm_instance;
+  _imports = {};
+  _global_indices = [];
+  _exports = [];
+  _export_keys = [];
+  // To facilitate simpler storage, serialization, and networking function calls
+  // are associated with an index instead of a string.
+  _function_name_to_index = /* @__PURE__ */ new Map();
+  _fixed_update_index;
+  rust_utilities;
   constructor(wasm_instance, rust_utilities) {
-    this._current_simulation_time = { time: 0, player_id: 0 };
-    this._fixed_update_time = 0;
-    this._target_time = 0;
-    this._events = [];
-    this._snapshots = [];
-    this._imports = {};
-    this._global_indices = [];
-    this._exports = [];
-    this._export_keys = [];
-    // To facilitate simpler storage, serialization, and networking function calls
-    // are associated with an index instead of a string.
-    this._function_name_to_index = /* @__PURE__ */ new Map();
     this._wasm_instance = wasm_instance;
     this._exports = Object.values(wasm_instance.instance.exports);
     this._export_keys = Object.keys(wasm_instance.instance.exports);
     this.rust_utilities = rust_utilities;
   }
   static async setup(wasm_binary, imports, fixed_update_interval) {
-    var _a, _b, _c;
     const rust_utilities = await RustUtilities.setup();
     {
-      imports.env ?? (imports.env = {});
-      (_a = imports.env).abort ?? (_a.abort = () => {
+      imports.env ??= {};
+      imports.env.abort ??= () => {
         console.log("Ignoring call to abort");
-      });
-      (_b = imports.env).seed ?? (_b.seed = () => {
+      };
+      imports.env.seed ??= () => {
         return 14;
-      });
+      };
     }
     let external_log = () => {
       console.log("Not implemented");
     };
-    (_c = imports.env).external_log ?? (_c.external_log = (a, b) => external_log(a, b));
+    imports.env.external_log ??= (a, b) => external_log(a, b);
     wasm_binary = rust_utilities.process_binary(wasm_binary, true, false);
     const wasm_instance = await WebAssembly.instantiate(wasm_binary, imports);
     const time_machine = new TimeMachine(wasm_instance, rust_utilities);
@@ -626,7 +634,7 @@ var TimeMachine = class {
       j += 1;
     }
     if (time_machine._fixed_update_index !== void 0) {
-      time_machine._fixed_update_interval ?? (time_machine._fixed_update_interval = 1e3 / 60);
+      time_machine._fixed_update_interval ??= 1e3 / 60;
     } else {
       time_machine._fixed_update_interval = void 0;
     }
@@ -950,26 +958,26 @@ var UserIdType = class {
 var UserId = new UserIdType();
 var ROUND_TRIP_TIME_ROLLING_AVERAGE_ALPHA = 0.9;
 var Tangle = class {
-  constructor(time_machine) {
-    this._buffered_messages = [];
-    this._peer_data = /* @__PURE__ */ new Map();
-    this._tangle_state = 0 /* Disconnected */;
-    this._current_program_binary = new Uint8Array();
-    this._block_reentrancy = false;
-    this._enqueued_inner_calls = [];
-    this._configuration = {};
-    this._outgoing_message_buffer = new Uint8Array(500);
-    this._message_time_offset = 0;
-    this._last_sent_message = 0;
-    this._time_machine = time_machine;
-    this._rust_utilities = time_machine.rust_utilities;
-  }
+  _room;
+  _time_machine;
+  _rust_utilities;
+  _buffered_messages = [];
+  _peer_data = /* @__PURE__ */ new Map();
+  _tangle_state = 0 /* Disconnected */;
+  _current_program_binary = new Uint8Array();
+  _block_reentrancy = false;
+  _enqueued_inner_calls = [];
+  _last_performance_now;
+  _configuration = {};
+  _outgoing_message_buffer = new Uint8Array(500);
+  _message_time_offset = 0;
+  _last_sent_message = 0;
   // private _debug_enabled = true;
   static async instantiate(source, importObject, tangle_configuration) {
-    tangle_configuration ?? (tangle_configuration = {});
-    tangle_configuration.accept_new_programs ?? (tangle_configuration.accept_new_programs = false);
+    tangle_configuration ??= {};
+    tangle_configuration.accept_new_programs ??= false;
     const wasm_binary = new Uint8Array(source);
-    importObject ?? (importObject = {});
+    importObject ??= {};
     if (importObject) {
       Object.values(importObject).forEach((moduleImports) => {
         Object.entries(moduleImports).forEach(([importName, importValue]) => {
@@ -1000,6 +1008,10 @@ var Tangle = class {
     const binary = await source.arrayBuffer();
     return Tangle.instantiate(new Uint8Array(binary), importObject, tangle_configuration);
   }
+  constructor(time_machine) {
+    this._time_machine = time_machine;
+    this._rust_utilities = time_machine.rust_utilities;
+  }
   _change_state(state) {
     if (this._tangle_state != state) {
       if (state == 1 /* Connected */) {
@@ -1013,7 +1025,7 @@ var Tangle = class {
     this._tangle_state = state;
   }
   async setup_inner(room_name, wasm_binary) {
-    room_name ?? (room_name = document.location.href);
+    room_name ??= document.location.href;
     const hash = this._rust_utilities.hash_data(wasm_binary);
     room_name += hash.join("");
     const room_configuration = {
@@ -1389,6 +1401,89 @@ var Tangle = class {
   }
 };
 
+// webgl/bindAttribute.ts
+function bindAttribute(gl, shaderProgram, vertexBuffer, attributeName, size) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  const attribLoc = gl.getAttribLocation(shaderProgram, attributeName);
+  gl.vertexAttribPointer(attribLoc, size, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(attribLoc);
+}
+
+// webgl/shapeFrag.glsl
+var shapeFrag_default = "precision highp float;uniform vec3 uColor;void main(void){gl_FragColor=vec4(uColor,1.0);}";
+
+// webgl/shapeVert.glsl
+var shapeVert_default = "precision highp float;attribute vec2 coordinates;uniform float uAspect;uniform float uScale;uniform vec3 uXYA;mat2 rotationMatrix(float angle){float s=sin(angle),c=cos(angle);return mat2(c,-s,s,c);}void main(void){vec2 pos=coordinates*rotationMatrix(-uXYA.z);pos=pos*vec2(1.0,uAspect)*uScale+uXYA.xy;gl_Position=vec4(pos,0.0,1.0);}";
+
+// webgl/makeShader.ts
+function makeShader(gl, vertexShaderSrc, fragmentShaderSrc) {
+  const vertShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertShader, vertexShaderSrc);
+  gl.compileShader(vertShader);
+  const vertShaderMessage = gl.getShaderInfoLog(vertShader);
+  if (vertShaderMessage) {
+    console.error(vertShaderMessage);
+  }
+  const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragShader, fragmentShaderSrc);
+  gl.compileShader(fragShader);
+  const fragShaderMessage = gl.getShaderInfoLog(fragShader);
+  if (fragShaderMessage) {
+    console.error(fragShaderMessage);
+  }
+  const shaderProgram = gl.createProgram();
+  gl.attachShader(shaderProgram, vertShader);
+  gl.attachShader(shaderProgram, fragShader);
+  gl.linkProgram(shaderProgram);
+  gl.useProgram(shaderProgram);
+  return shaderProgram;
+}
+
+// webgl/getShapeShader.ts
+var shapeShader;
+function getShapeShader(gl) {
+  if (!shapeShader) {
+    shapeShader = makeShader(gl, shapeVert_default, shapeFrag_default);
+  }
+  return shapeShader;
+}
+
+// webgl/makeWebGLShapes.ts
+function makeWebGLCircleRenderer(gl) {
+  const fans = 36;
+  const totalVerts = fans + 2;
+  const vertices = [0, 0];
+  for (let i = 0; i <= fans; i++) {
+    const ratio = i / fans;
+    const a = ratio * Math.PI * 2;
+    vertices.push(Math.cos(a), Math.sin(a));
+  }
+  const vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  const flareColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, flareColorBuffer);
+  const shapeShaderProgram = getShapeShader(gl);
+  return {
+    render(aspect, x, y, angle, radius, color) {
+      bindAttribute(gl, shapeShaderProgram, vertexBuffer, "coordinates", 2);
+      gl.useProgram(shapeShaderProgram);
+      gl.uniform1f(gl.getUniformLocation(shapeShaderProgram, "uScale"), radius);
+      gl.uniform1f(
+        gl.getUniformLocation(shapeShaderProgram, "uAspect"),
+        aspect
+      );
+      gl.uniform3fv(gl.getUniformLocation(shapeShaderProgram, "uColor"), color);
+      gl.uniform3fv(gl.getUniformLocation(shapeShaderProgram, "uXYA"), [
+        x,
+        y,
+        angle
+      ]);
+      gl.drawArrays(gl.TRIANGLE_FAN, 0, totalVerts);
+    }
+  };
+}
+
 // index.ts
 async function setup_demo1() {
   set_random_name();
@@ -1397,9 +1492,18 @@ async function setup_demo1() {
   var context2d = canvas.getContext("2d");
   let canvas2 = document.getElementById("demoWebGl");
   canvas2.style.opacity = "0.0";
+  for (const v of [
+    "-moz-crisp-edges",
+    "-webkit-crisp-edges",
+    "crisp-edges",
+    "pixelated"
+  ]) {
+    canvas2.style.setProperty("image-rendering", v);
+  }
   var contextWebGl = canvas2.getContext("webgl", {
     alpha: true
   });
+  const circleRenderer = makeWebGLCircleRenderer(contextWebGl);
   let fixed_update_interval = 1e3 / 60;
   const cachedShapes = /* @__PURE__ */ new Map();
   let currentShape;
@@ -1437,12 +1541,15 @@ async function setup_demo1() {
         context2d.arc(0, 0, radius, 0, 2 * Math.PI);
         context2d.fill();
       },
-      draw_fast_ball: function(radius, ma, mb, mc, md, me, mf, cr, cg, cb) {
-        context2d.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 255)`;
-        context2d.setTransform(ma, mb, mc, md, me, mf);
-        context2d.beginPath();
-        context2d.arc(0, 0, radius, 0, 2 * Math.PI);
-        context2d.fill();
+      draw_fast_ball: function(x, y, angle, radius, cr, cg, cb) {
+        circleRenderer.render(
+          window.innerWidth / canvas.height,
+          x * 2 / window.innerWidth - 1,
+          y * -2 / canvas.height + 1,
+          angle,
+          radius,
+          [cr / 255, cg / 255, cb / 255]
+        );
       },
       begin_draw_fast_poly: function(x, y, ma, mb, mc, md, me, mf, cr, cg, cb) {
         context2d.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 255)`;
@@ -1560,12 +1667,6 @@ async function setup_demo1() {
       canvas.height = canvas.clientHeight;
     }
     context2d.clearRect(0, 0, context2d.canvas.width, context2d.canvas.height);
-    contextWebGl.clearColor(
-      Math.random() * 0.1,
-      Math.random() * 0.1,
-      Math.random() * 0.1,
-      0.01
-    );
     contextWebGl.clear(contextWebGl.COLOR_BUFFER_BIT);
     exports.draw.callAndRevert();
     window.requestAnimationFrame(animation);

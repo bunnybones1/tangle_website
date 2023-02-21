@@ -1,4 +1,5 @@
 import { Tangle, TangleState, UserId } from "../tangle/tangle_ts/src/index";
+import { makeWebGLCircleRenderer } from "./webgl/makeWebGLShapes";
 
 async function setup_demo1() {
   set_random_name();
@@ -11,9 +12,20 @@ async function setup_demo1() {
   let canvas2 = document.getElementById("demoWebGl")! as HTMLCanvasElement;
   canvas2.style.opacity = "0.0";
 
+  for (const v of [
+    "-moz-crisp-edges",
+    "-webkit-crisp-edges",
+    "crisp-edges",
+    "pixelated",
+  ]) {
+    canvas2.style.setProperty("image-rendering", v);
+  }
+
   var contextWebGl = canvas2.getContext("webgl", {
     alpha: true,
   })!;
+
+  const circleRenderer = makeWebGLCircleRenderer(contextWebGl);
 
   let fixed_update_interval = 1000 / 60;
 
@@ -62,23 +74,22 @@ async function setup_demo1() {
         context2d.fill();
       },
       draw_fast_ball: function (
+        x: number,
+        y: number,
+        angle: number,
         radius: number,
-        ma: number,
-        mb: number,
-        mc: number,
-        md: number,
-        me: number,
-        mf: number,
         cr: number,
         cg: number,
         cb: number
       ) {
-        context2d.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 255)`;
-        context2d.setTransform(ma, mb, mc, md, me, mf);
-        //extra_elements.push(addSVGCircle(x, y, radius));
-        context2d.beginPath();
-        context2d.arc(0, 0, radius, 0, 2 * Math.PI);
-        context2d.fill();
+        circleRenderer.render(
+          window.innerWidth / canvas.height,
+          (x * 2) / window.innerWidth - 1,
+          (y * -2) / canvas.height + 1,
+          angle,
+          radius,
+          [cr / 255, cg / 255, cb / 255]
+        );
       },
       begin_draw_fast_poly: function (
         x: number,
@@ -256,12 +267,12 @@ async function setup_demo1() {
     }
 
     context2d.clearRect(0, 0, context2d.canvas.width, context2d.canvas.height);
-    contextWebGl.clearColor(
-      Math.random() * 0.1,
-      Math.random() * 0.1,
-      Math.random() * 0.1,
-      0.01
-    );
+    // contextWebGl.clearColor(
+    //   Math.random() * 0.1,
+    //   Math.random() * 0.1,
+    //   Math.random() * 0.1,
+    //   0.1
+    // );
     contextWebGl.clear(contextWebGl.COLOR_BUFFER_BIT);
 
     exports.draw.callAndRevert();

@@ -100,18 +100,7 @@ mod unsafe_external {
     extern "C" {
         pub(crate) fn set_color(r: u8, g: u8, b: u8, a: f32);
         pub(crate) fn draw_circle(x: f32, y: f32, r: f32);
-        pub(crate) fn draw_fast_ball(
-            r: f32,
-            ma: f32,
-            mb: f32,
-            mc: f32,
-            md: f32,
-            me: f32,
-            mf: f32,
-            cr: u8,
-            cg: u8,
-            cb: u8,
-        );
+        pub(crate) fn draw_fast_ball(x: f32, y: f32, a: f32, r: f32, cr: u8, cg: u8, cb: u8);
         pub(crate) fn draw_fast_rect(
             x: f32,
             y: f32,
@@ -166,20 +155,9 @@ pub fn draw_circle(x: f32, y: f32, radius: f32) {
     }
 }
 
-pub fn draw_fast_ball(
-    radius: f32,
-    ma: f32,
-    mb: f32,
-    mc: f32,
-    md: f32,
-    me: f32,
-    mf: f32,
-    cr: u8,
-    cg: u8,
-    cb: u8,
-) {
+pub fn draw_fast_ball(x: f32, y: f32, angle: f32, radius: f32, cr: u8, cg: u8, cb: u8) {
     unsafe {
-        unsafe_external::draw_fast_ball(radius, ma, mb, mc, md, me, mf, cr, cg, cb);
+        unsafe_external::draw_fast_ball(x, y, angle, radius, cr, cg, cb);
     }
 }
 
